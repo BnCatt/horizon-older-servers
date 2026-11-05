@@ -1,21 +1,50 @@
 [mod]
 id = "older_servers"
-version = "1.0.0"
+version = "1.1.0"
 priority = 100
 
-# Pinned: besides the native hook points it changes two functions of the
-# client's connection code (`net::older_servers_enabled`, `net::older_server`)
-# and one of the protocol's item reader (`item::older_layout`), which are not
-# hook points. Re-check them before moving the pin.
+# Pinned: besides the native hook points it reaches inside Horizon here, all of
+# which must be re-checked before moving the pin:
+# - net::older_servers_enabled, net::older_server (connection: which version);
+# - item::older_layout (1.21.11's EitherHolder item components);
+# - multiplayer::ping_all (the list's ping, for the version tags) and the
+#   `older_servers_rows` module in multiplayer.rs (where Screen::draw puts a row,
+#   the Edit screen's address);
+# - game::debug_lines::Game::debug_entry_lines (the F3 line);
+# - Game's private `title` field, read by screen.rs and mouse.rs.
 [compatibility]
 horizon_revision = "f319701e8c9ab657ff562250b3ba07b2d654e3bc"
 
-# The picked version and the button's geometry, shared by the screen and the connection.
+# Seçim, ayarlar, sunucu başına sürümler; ekran ve bağlantı kodu paylaşır.
 [[module]]
 id = "state"
 file = "crates/horizon-client/src/net.rs"
 name = "older_servers_mod"
 source = "state.rs"
+visibility = "pub"
+
+# Vanilla buton / liste satırı / kaydırma çubuğu çizimleri.
+[[module]]
+id = "skin"
+file = "crates/horizon-client/src/net.rs"
+name = "older_servers_skin"
+source = "skin.rs"
+visibility = "pub"
+
+# Sürüm seçim panelinin yerleşimi ve olayları.
+[[module]]
+id = "panel"
+file = "crates/horizon-client/src/net.rs"
+name = "older_servers_panel"
+source = "panel.rs"
+visibility = "pub"
+
+# Sunucu satırlarının yeri ve Edit/Add Server'daki adres (iç erişim).
+[[module]]
+id = "rows"
+file = "crates/horizon-client/src/multiplayer.rs"
+name = "older_servers_rows"
+source = "rows.rs"
 visibility = "pub"
 
 # Older servers are on without HORIZON_OLDER_SERVERS.
@@ -27,7 +56,7 @@ target = "horizon_client_lib::net::older_servers_enabled"
 helper = "enabled.rs"
 bindings = []
 
-# The picked version, or the status ping on Auto.
+# Sunucuya sabit > seçim > ping (otomatik algılama).
 [[injection]]
 id = "server"
 kind = "HEAD"
@@ -36,6 +65,16 @@ target = "horizon_client_lib::net::older_server"
 helper = "server.rs"
 bindings = [
   { name = "address", ty = "&str", value = "address" },
+]
+
+# Sunucu listesi ping'lenirken protokoller (sürüm etiketleri).
+[[injection]]
+id = "ping"
+kind = "HEAD"
+target = "horizon_client_lib::multiplayer::ping_all"
+helper = "ping.rs"
+bindings = [
+  { name = "servers", ty = "&[ServerEntry]", value = "servers" },
 ]
 
 # 1.21.11's EitherHolder item components (horizon-rust/horizon#9752).
@@ -60,7 +99,7 @@ bindings = [
   { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
 ]
 
-# The version button on the Multiplayer screen.
+# Multiplayer: buton, etiketler, panel. Edit/Add Server: sunucu başına sürüm.
 [[injection]]
 id = "screen"
 kind = "HEAD"
@@ -85,6 +124,42 @@ bindings = [
 ]
 
 [[injection]]
+id = "scroll"
+hook = "screen_mouse_scrolled_pre"
+hook_version = 1
+kind = "HEAD"
+helper = "scroll.rs"
+bindings = [
+  { name = "screen", ty = "&crate::game::native_hooks::NativeScreenView<'_>", value = "screen" },
+  { name = "scroll", ty = "[f64; 2]", value = "scroll" },
+  { name = "canceled", ty = "&mut bool", value = "&mut *canceled" },
+]
+
+[[injection]]
+id = "keys"
+hook = "screen_key_pressed_pre"
+hook_version = 1
+kind = "HEAD"
+helper = "keys.rs"
+bindings = [
+  { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
+  { name = "screen", ty = "&crate::game::native_hooks::NativeScreenView<'_>", value = "screen" },
+  { name = "key", ty = "&str", value = "key" },
+  { name = "canceled", ty = "&mut bool", value = "&mut *canceled" },
+]
+
+# F3 satırı.
+[[injection]]
+id = "debug"
+kind = "HEAD"
+target = "horizon_client::game::debug_lines::Game<'_>::debug_entry_lines"
+helper = "debug.rs"
+bindings = [
+  { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
+  { name = "d", ty = "&mut Displayer", value = "&mut *d" },
+]
+
+[[injection]]
 id = "list"
 hook = "mods"
 hook_version = 1
@@ -92,4 +167,28 @@ kind = "HEAD"
 helper = "list.rs"
 bindings = [
   { name = "mods", ty = "&mut Vec<crate::game::native_hooks::NativeMod>", value = "&mut *mods" },
+]
+
+# Options > Mods > Older Servers ayarları.
+[[injection]]
+id = "settings"
+hook = "settings"
+hook_version = 1
+kind = "HEAD"
+helper = "settings.rs"
+bindings = [
+  { name = "mod_id", ty = "&str", value = "mod_id" },
+  { name = "buttons", ty = "&mut Vec<String>", value = "&mut *buttons" },
+]
+
+[[injection]]
+id = "settings_click"
+hook = "settings_click"
+hook_version = 1
+kind = "HEAD"
+helper = "click.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "mod_id", ty = "&str", value = "mod_id" },
+  { name = "button", ty = "usize", value = "button" },
 ]

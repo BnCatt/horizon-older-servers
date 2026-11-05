@@ -1,32 +1,108 @@
-// The version button, top left of the Multiplayer screen.
+// Çizim: Multiplayer ekranında sürüm butonu, sunucu satırlarında sürüm etiketi
+// ve açıksa sürüm paneli; Edit/Add Server ekranında sunucu başına sürüm butonu.
 fn older_servers_screen(
     game: &crate::game::Game<'_>,
     batch: &mut horizon_client::hud::HudBatch,
     screen: &crate::game::native_hooks::NativeScreenView<'_>,
 ) {
-    use horizon_client::net::older_servers_mod as m;
-    if screen.id != "multiplayer" || !m::on() {
+    use horizon_client::net::{
+        older_servers_mod as m, older_servers_panel as p, older_servers_skin as skin,
+    };
+    use std::sync::atomic::{AtomicBool, Ordering};
+    static WARNED: AtomicBool = AtomicBool::new(false);
+    if !m::on() {
         return;
     }
-    let label = m::label();
-    let width = game.native_text_width(&label);
-    let rect = m::button(width);
-    let hover = m::inside(rect, screen.mouse);
-    // Vanilla's button look: a dark face, a lighter edge when hovered.
-    let edge = if hover { 0xFFFF_FFFF } else { 0xFF00_0000 };
-    game.native_fill(batch, rect, edge);
-    game.native_fill(
-        batch,
-        [rect[0] + 1.0, rect[1] + 1.0, rect[2] - 2.0, rect[3] - 2.0],
-        if hover { 0xFF6E_6E6E } else { 0xFF4A_4A4A },
-    );
-    let x = rect[0] + (rect[2] - width) / 2.0;
-    game.native_text(batch, &label, [x, rect[1] + 6.0], 0xFF_FFFF, true);
-    if hover {
-        let tip = "Sol tık: sonraki · Sağ tık: önceki";
-        let w = game.native_text_width(tip) + 6.0;
-        let at = [rect[0], rect[1] + rect[3] + 3.0];
-        game.native_fill(batch, [at[0], at[1], w, 13.0], 0xE010_0010);
-        game.native_text(batch, tip, [at[0] + 3.0, at[1] + 3.0], 0xFF_FFFF, true);
+    let size = [screen.rect[2], screen.rect[3]];
+    let tw = |s: &str| game.native_text_width(s);
+    let draw = |batch: &mut horizon_client::hud::HudBatch, parts: &[skin::Draw]| {
+        for part in parts {
+            match part {
+                skin::Draw::Fill(rect, argb) => game.native_fill(batch, *rect, *argb),
+                skin::Draw::Text(text, at, rgb, shadow) => {
+                    game.native_text(batch, text, *at, *rgb, *shadow)
+                }
+                skin::Draw::Sprite { name, src, dst } => {
+                    if !game.native_sprite(batch, name, *src, *dst) {
+                        // Atlas'ta yoksa (kaynak paketi?) düz renkli yedek.
+                        if !WARNED.swap(true, Ordering::Relaxed) {
+                            log::warn!(target: "horizon_older_servers", "no sprite {name}: drawing plain buttons");
+                        }
+                        game.native_fill(batch, *dst, 0xFF6E_6E6E);
+                    }
+                }
+            }
+        }
+    };
+    let multiplayer = || match game.title.as_ref().map(|t| &t.mode) {
+        Some(horizon_client::title::Mode::Multiplayer(s)) => Some(s),
+        _ => None,
+    };
+    if screen.id != "multiplayer" {
+        // Başka ekrana geçince panel kapanır.
+        if let Ok(mut panel) = p::PANEL.lock() {
+            panel.open = false;
+        }
+    }
+    match screen.id {
+        "multiplayer" => {
+            let settings = m::settings();
+            let panel = *p::PANEL.lock().unwrap();
+            if settings.list_tags
+                && let Some(s) = multiplayer()
+            {
+                for row in horizon_client::multiplayer::older_servers_rows::visible(s, size) {
+                    let Some((text, rgb)) = m::tag_for(&row.address, m::pinged(&row.address)) else {
+                        continue;
+                    };
+                    let x = row.at[0] + tw(&row.name) + 6.0;
+                    if x + tw(&text) <= row.limit {
+                        game.native_text(batch, &text, [x, row.at[1]], rgb, true);
+                    }
+                }
+            }
+            if !settings.hide_button {
+                let label = m::label();
+                let width = tw(&label);
+                let rect = m::button(size, width);
+                let state = if panel.open {
+                    skin::ButtonState::Selected
+                } else if m::inside(rect, screen.mouse) {
+                    skin::ButtonState::Hover
+                } else {
+                    skin::ButtonState::Normal
+                };
+                draw(batch, &skin::button(rect, state, &label, width));
+            }
+            if panel.open {
+                let (parts, _) = p::layout(
+                    size,
+                    &m::choices(),
+                    m::choice_index(),
+                    panel.scroll,
+                    screen.mouse,
+                    settings.auto_detect,
+                    &tw,
+                );
+                draw(batch, &parts);
+            }
+        }
+        "edit_server" | "add_server" => {
+            let Some(address) = multiplayer()
+                .and_then(horizon_client::multiplayer::older_servers_rows::edit_address)
+            else {
+                return;
+            };
+            let label = m::server_label(address);
+            let width = tw(&label);
+            let rect = m::edit_button(size, width);
+            let state = if m::inside(rect, screen.mouse) {
+                skin::ButtonState::Hover
+            } else {
+                skin::ButtonState::Normal
+            };
+            draw(batch, &skin::button(rect, state, &label, width));
+        }
+        _ => {}
     }
 }
