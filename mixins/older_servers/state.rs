@@ -12,7 +12,7 @@ use horizon_protocol::adapter::ServerVersion;
 /// Modun kimliği: ayar klasörü ve Options > Mods satırı.
 pub const ID: &str = "older_servers";
 pub const NAME: &str = "Older Servers";
-pub const VERSION: &str = "2.0.0";
+pub const VERSION: &str = "2.0.1";
 pub const DESCRIPTION: &str = "Join 1.21.10, 1.21.11, 26.1 and 26.2 servers without HORIZON_OLDER_SERVERS: \
 ViaFabricPlus's screens (protocol selection with tabs, search and favourites, Force Version per server, \
 settings), the server version in the ping tooltip and its F3 lines. Not affiliated with ViaFabricPlus.";

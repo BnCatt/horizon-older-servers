@@ -22,7 +22,7 @@ yeniden yazıldı. ViaFabricPlus ile bağlantısı yoktur.
   ekranı, altta Reset. Sabitlenen sürüm `servers.json`'a adresle kaydedilir.
 - **Öncelik**: sunucuya sabitlenen sürüm > seçilen sürüm > Auto Detect (sunucunun ping'i).
 - **Sunucu listesi**: ping ikonunun ipucunda `Target version` ve `Server version (protokol)`.
-- **F3**: `[ViaFabricPlus] 2.0.0`, sunucudayken `P: … C: <istemci> S: <sunucu>`.
+- **F3**: `[ViaFabricPlus] 2.0.1`, sunucudayken `P: … C: <istemci> S: <sunucu>`.
 - **Settings**: üç butonun yeri (None / Left; Top / Right; Top / Left; Bottom / Right; Bottom),
   seçilen sürümü sakla, sunucu sürümünü göster.
 - **1.21.11 eşya düzeltmesi**: EitherHolder bileşenleri (upstream'e girdi: horizon-rust/horizon#10038).
@@ -41,7 +41,7 @@ yeniden yazıldı. ViaFabricPlus ile bağlantısı yoktur.
 ## Kurulum
 
 ```sh
-python tools/package.py --install     # target/older_servers-2.0.0.hnmod → horizon-native-mods/
+python tools/package.py --install     # target/older_servers-2.0.1.hnmod → horizon-native-mods/
 ```
 
 Sonra Horizon launcher'ında oyunu native modlarıyla derle.
