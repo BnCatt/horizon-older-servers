@@ -13,7 +13,7 @@ priority = 100
 # - game::debug_lines::Game::debug_entry_lines (the F3 line);
 # - Game's private `title` field, read by screen.rs and mouse.rs.
 [compatibility]
-horizon_revision = "f319701e8c9ab657ff562250b3ba07b2d654e3bc"
+horizon_revision = "66f3981f522b24c250b21523a70080965b940424"
 
 # Seçim, ayarlar, sunucu başına sürümler; ekran ve bağlantı kodu paylaşır.
 [[module]]
