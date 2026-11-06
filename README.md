@@ -48,7 +48,7 @@ Sonra Horizon launcher'ında oyunu native modlarıyla derle.
 
 ## Sabitlenmiş sürüm (pin)
 
-Native hook noktası olmayan yerlere dokunduğu için Horizon Nightly 2026-11-05'e (`f319701`)
+Native hook noktası olmayan yerlere dokunduğu için Horizon Nightly 2026-11-05'e (`66f3981`)
 sabitlenmiştir. İç erişimlerin hepsi `horizon-mixin.toml`'un başındaki yorumda listelenir:
 
 - `horizon_client_lib::net::older_servers_enabled`, `::older_server` (bağlantı sürümü)
