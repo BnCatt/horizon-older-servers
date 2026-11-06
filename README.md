@@ -6,33 +6,26 @@ Multiplayer ekranına bir sürüm seçici ekler.
 
 *English summary below.*
 
-## Özellikler
+## Özellikler (2.0.0: ViaFabricPlus arayüzü)
 
-- **1.21.10, 1.21.11, 26.1 ve 26.2 sunucularına gir**: `HORIZON_OLDER_SERVERS=1` gerekmez.
-- **Sürüm paneli** (Multiplayer ekranı): köşedeki `Sürüm: …` butonuna tıklayınca vanilla
-  görünümlü bir liste açılır. Listede `Otomatik (sunucuya göre)` / `Varsayılan (26.3)` ve
-  desteklenen tüm sürümler (en yeniden eskiye) bulunur. Seçmek için tıkla ya da ↑/↓ ve Enter
-  kullan; kapatmak için Esc, panelin dışına tıkla ya da `Tamam`'a bas. Tekerlekle kaydırılır.
-  Panelin altındaki `Otomatik algılama: AÇIK/KAPALI` butonu algılamayı açıp kapatır.
-- **Sunucu başına sürüm**: Edit Server / Add Server ekranında adres alanının yanındaki buton o
-  sunucuya bir sürüm sabitler (sol tık ileri, sağ tık geri). Sabitlenen sürüm
-  `servers.json` dosyasına adresle (küçük harf, varsayılan port `:25565`) kaydedilir.
-- **Öncelik**: sunucuya sabitlenen sürüm > listeden seçilen sürüm > otomatik algılama (ping).
-  Otomatik algılama kapalıysa ve hiçbir sürüm seçilmemişse istemci 26.3 konuşur.
-- **Listede sürüm etiketi**: sunucu adının sağında hangi sürümle bağlanılacağı yazar.
-  Sarı `→ 1.21.11` çeviri yapılacak demektir, yeşil `26.3` çeviri yok, kırmızı ise sunucunun
-  sürümü seçilenle uyuşmuyor ya da desteklenmiyor (`✕ 47`).
-- **F3 satırı**: bir dünyadayken `Older Servers: 1.21.11 (774), auto` (kaynak: `per server`,
-  `picked`, `auto` ya da `default`).
-- **Ayarlar** (Options > Mods > Older Servers): otomatik algılama, butonun köşesi, butonu gizle,
-  liste etiketleri, F3 satırı ve sürüm seçimi.
-- **1.21.11 eşya düzeltmesi**: 1.21.11 `instrument`, `provides_trim_material`, `damage_type`,
-  `chicken/variant` ve `zombie_nautilus/variant` bileşenlerini EitherHolder olarak gönderir;
-  çevirici bunları 26.3'ün düz holder'ı gibi okuyup paketi düşürüyordu (keçi boruları, zırh
-  süsleri, yumurtalar…). Upstream: horizon-rust/horizon#9752.
+ViaFabricPlus'ın (26.3 dalı) ekranları Horizon'da, aynı yerleşim ve ölçülerle. ViaFabricPlus'ın
+kodu kullanılmadı (GPL-3.0): davranışı ve yerleşimi Rust'ta, Horizon'un kendi widget'larıyla
+yeniden yazıldı. ViaFabricPlus ile bağlantısı yoktur.
 
-Butonlar ve liste Minecraft'ın kendi `widget/button`, `widget/scroller` sprite'larıyla çizilir;
-modun içinde görsel dosyası yoktur.
+- **1.21.9–26.2 sunucularına gir**: `HORIZON_OLDER_SERVERS=1` gerekmez.
+- **ViaFabricPlus butonu** (Multiplayer ve Direct Connect, sağ üst, 98×20) → **sürüm seçici**:
+  Back, arama, sekmeler (Favorites, Modern, Legacy, Beta, Alpha, Classic, April Fools), her
+  sürüm ikonu, güncelleme adı, çıkış tarihi ve ★ (favori) ile; en üstte **Auto Detect**. Alt
+  satırda Server lists, Settings, Report issues. Horizon'un bağlanamadığı sürümler gri ve
+  seçilemez; Server lists (BetaCraft/ClassiCube) devre dışı.
+- **Add/Edit Server**: sağ üstte `Set version` (ya da sabitlenen sürüm) → **Force Version**
+  ekranı, altta Reset. Sabitlenen sürüm `servers.json`'a adresle kaydedilir.
+- **Öncelik**: sunucuya sabitlenen sürüm > seçilen sürüm > Auto Detect (sunucunun ping'i).
+- **Sunucu listesi**: ping ikonunun ipucunda `Target version` ve `Server version (protokol)`.
+- **F3**: `[ViaFabricPlus] 2.0.0`, sunucudayken `P: … C: <istemci> S: <sunucu>`.
+- **Settings**: üç butonun yeri (None / Left; Top / Right; Top / Left; Bottom / Right; Bottom),
+  seçilen sürümü sakla, sunucu sürümünü göster.
+- **1.21.11 eşya düzeltmesi**: EitherHolder bileşenleri (upstream'e girdi: horizon-rust/horizon#10038).
 
 ## Kayıtlı veriler
 
@@ -41,13 +34,14 @@ modun içinde görsel dosyası yoktur.
 | Anahtar | İçerik |
 | --- | --- |
 | `version` | Listeden seçilen sürüm (1.0.0'daki anahtar, aynen okunur) |
-| `auto_detect`, `button_corner`, `hide_button`, `list_tags`, `debug_line` | Ayarlar |
+| `auto_detect`, `debug_line`, `mp_button`, `add_button`, `direct_button`, `save_selected`, `show_advertised` | Ayarlar |
+| `favorites` | Favori sürümler, satır başına bir ad |
 | `servers.json` | Sunucu başına sabitlenen sürümler (`{"play.example.com:25565": "1.21.11"}`) |
 
 ## Kurulum
 
 ```sh
-python tools/package.py --install     # target/older_servers-1.1.0.hnmod → horizon-native-mods/
+python tools/package.py --install     # target/older_servers-2.0.0.hnmod → horizon-native-mods/
 ```
 
 Sonra Horizon launcher'ında oyunu native modlarıyla derle.

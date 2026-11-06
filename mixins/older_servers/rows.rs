@@ -59,3 +59,44 @@ pub fn edit_address(screen: &Screen) -> Option<&str> {
         _ => None,
     }
 }
+
+/// The ping icon under the pointer: the server's address, the game's own
+/// tooltip line for it, and the version its status named.
+pub struct PingHover {
+    pub address: String,
+    pub status: crate::text::Text,
+    pub version: Option<String>,
+}
+
+pub fn ping_hover(screen: &Screen, size: [f32; 2], cursor: [f32; 2]) -> Option<PingHover> {
+    let Screen::List {
+        servers,
+        pings,
+        lan,
+        scroll,
+        ..
+    } = screen
+    else {
+        return None;
+    };
+    let size = (size[0].ceil(), size[1].ceil());
+    let (top, bottom, _) = list_area(size.0, size.1);
+    let mut scroll = *scroll;
+    scroll.clamp(top, bottom, content_height(servers.len(), lan.games().len()));
+    let pings = pings.lock().unwrap();
+    let at = (cursor[0], cursor[1]);
+    let status = ping_tooltip(servers, &pings, size, scroll.amount, at)?;
+    let Row::Server(i) = row_at(servers.len(), 0, at, size, scroll.amount)? else {
+        return None;
+    };
+    let version = match pings.get(&servers[i].ip) {
+        Some(Ping::Ok { version, .. }) => Some(version.clone()),
+        Some(Ping::Incompatible { version, .. }) => Some(version.plain()),
+        _ => None,
+    };
+    Some(PingHover {
+        address: servers[i].ip.clone(),
+        status,
+        version,
+    })
+}

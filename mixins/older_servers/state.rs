@@ -12,10 +12,10 @@ use horizon_protocol::adapter::ServerVersion;
 /// Modun kimliği: ayar klasörü ve Options > Mods satırı.
 pub const ID: &str = "older_servers";
 pub const NAME: &str = "Older Servers";
-pub const VERSION: &str = "1.1.0";
+pub const VERSION: &str = "2.0.0";
 pub const DESCRIPTION: &str = "Join 1.21.10, 1.21.11, 26.1 and 26.2 servers without HORIZON_OLDER_SERVERS: \
-a version list on the Multiplayer screen, a version per server, version tags in the server list and an \
-F3 line, in the manner of ViaFabricPlus. Unofficial.";
+ViaFabricPlus's screens (protocol selection with tabs, search and favourites, Force Version per server, \
+settings), the server version in the ping tooltip and its F3 lines. Not affiliated with ViaFabricPlus.";
 
 /// Sunucu başına sürümlerin tutulduğu ayar dosyası.
 pub const SERVERS_KEY: &str = "servers.json";
@@ -88,8 +88,13 @@ pub fn load(get: &dyn Fn(&str) -> Option<String>) {
     if LOADED.swap(true, Ordering::Relaxed) {
         return;
     }
-    CHOICE.store(choice_from(get(VERSION_KEY).as_deref()) as u8, Ordering::Relaxed);
-    *SETTINGS.lock().unwrap() = Settings::load(get);
+    let settings = Settings::load(get);
+    let version = if settings.save_selected { get(VERSION_KEY) } else { None };
+    CHOICE.store(choice_from(version.as_deref()) as u8, Ordering::Relaxed);
+    *SETTINGS.lock().unwrap() = settings;
+    *FAVORITES.lock().unwrap() = get(FAVORITES_KEY)
+        .map(|s| s.lines().map(str::trim).filter(|l| !l.is_empty()).map(str::to_owned).collect())
+        .unwrap_or_default();
     load_forced(get(SERVERS_KEY).as_deref());
 }
 
@@ -121,63 +126,34 @@ pub fn label() -> String {
 
 // ---------------------------------------------------------------- ayarlar
 
-/// Butonun durduğu köşe.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Corner {
-    TopLeft,
-    TopRight,
-    BottomLeft,
-    BottomRight,
-}
+use super::older_servers_vfp::Orientation;
 
-impl Corner {
-    const ALL: [Self; 4] = [Self::TopLeft, Self::TopRight, Self::BottomLeft, Self::BottomRight];
-
-    pub fn key(self) -> &'static str {
-        match self {
-            Self::TopLeft => "top_left",
-            Self::TopRight => "top_right",
-            Self::BottomLeft => "bottom_left",
-            Self::BottomRight => "bottom_right",
-        }
-    }
-    pub fn label(self) -> &'static str {
-        match self {
-            Self::TopLeft => "Sol üst",
-            Self::TopRight => "Sağ üst",
-            Self::BottomLeft => "Sol alt",
-            Self::BottomRight => "Sağ alt",
-        }
-    }
-    pub fn parse(s: &str) -> Option<Self> {
-        Self::ALL.into_iter().find(|c| c.key() == s.trim())
-    }
-    pub fn next(self) -> Self {
-        let i = Self::ALL.iter().position(|c| *c == self).unwrap_or(0);
-        Self::ALL[(i + 1) % Self::ALL.len()]
-    }
-}
-
-/// Modun ayarları (Options > Mods > Older Servers).
+/// Modun ayarları: ViaFabricPlus'ın General grubundan buraya uyanlar, ve
+/// Auto Detect (seçili sürüm "Auto Detect" mi).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Settings {
-    /// Seçim yokken sunucunun sürümü ping ile bulunur; kapalıyken 26.3 olarak bağlanılır.
+    /// Seçim yokken sunucunun sürümü ping ile bulunur (Auto Detect).
     pub auto_detect: bool,
-    pub button_corner: Corner,
-    pub hide_button: bool,
-    /// Sunucu listesinde sürüm etiketi.
-    pub list_tags: bool,
-    /// F3 ekranında bağlanılan sürüm satırı.
+    /// F3 satırları.
     pub debug_line: bool,
+    pub mp_button: Orientation,
+    pub add_button: Orientation,
+    pub direct_button: Orientation,
+    /// Seçilen sürüm saklanır; kapalıyken her açılışta Auto Detect.
+    pub save_selected: bool,
+    /// Sunucu listesinin ping ipucunda hedef ve sunucu sürümü.
+    pub show_advertised: bool,
 }
 
 impl Settings {
     pub const DEFAULT: Self = Self {
         auto_detect: true,
-        button_corner: Corner::TopLeft,
-        hide_button: false,
-        list_tags: true,
         debug_line: true,
+        mp_button: Orientation::RightTop,
+        add_button: Orientation::RightTop,
+        direct_button: Orientation::RightTop,
+        save_selected: true,
+        show_advertised: true,
     };
 
     /// Ayar dosyalarından okur; olmayan ya da okunamayan her ayar varsayılanında kalır.
@@ -187,16 +163,18 @@ impl Settings {
             Some("false") => false,
             _ => default,
         };
+        let corner = |key: &str, default: Orientation| {
+            get(key).as_deref().and_then(Orientation::parse).unwrap_or(default)
+        };
         let d = Self::DEFAULT;
         Self {
             auto_detect: flag("auto_detect", d.auto_detect),
-            button_corner: get("button_corner")
-                .as_deref()
-                .and_then(Corner::parse)
-                .unwrap_or(d.button_corner),
-            hide_button: flag("hide_button", d.hide_button),
-            list_tags: flag("list_tags", d.list_tags),
             debug_line: flag("debug_line", d.debug_line),
+            mp_button: corner("mp_button", d.mp_button),
+            add_button: corner("add_button", d.add_button),
+            direct_button: corner("direct_button", d.direct_button),
+            save_selected: flag("save_selected", d.save_selected),
+            show_advertised: flag("show_advertised", d.show_advertised),
         }
     }
 
@@ -204,10 +182,12 @@ impl Settings {
     pub fn stored(&self) -> Vec<(&'static str, String)> {
         vec![
             ("auto_detect", self.auto_detect.to_string()),
-            ("button_corner", self.button_corner.key().to_owned()),
-            ("hide_button", self.hide_button.to_string()),
-            ("list_tags", self.list_tags.to_string()),
             ("debug_line", self.debug_line.to_string()),
+            ("mp_button", self.mp_button.key().to_owned()),
+            ("add_button", self.add_button.key().to_owned()),
+            ("direct_button", self.direct_button.key().to_owned()),
+            ("save_selected", self.save_selected.to_string()),
+            ("show_advertised", self.show_advertised.to_string()),
         ]
     }
 }
@@ -225,73 +205,79 @@ pub fn toggle_auto() -> Vec<(&'static str, String)> {
     s.stored()
 }
 
-fn on_off(b: bool) -> &'static str {
-    if b { "AÇIK" } else { "KAPALI" }
+/// ViaFabricPlus'ın ayar ekranında `i`. satır (`older_servers_vfp::SETTINGS`).
+pub fn setting_click(i: usize) -> Vec<(&'static str, String)> {
+    let mut s = SETTINGS.lock().unwrap();
+    match i {
+        0 => s.mp_button = s.mp_button.next(),
+        1 => s.add_button = s.add_button.next(),
+        2 => s.direct_button = s.direct_button.next(),
+        3 => s.save_selected = !s.save_selected,
+        4 => s.show_advertised = !s.show_advertised,
+        _ => return Vec::new(),
+    }
+    s.stored()
 }
 
-/// Ayar sayfasının butonları, sırasıyla.
+/// Seçilen sürüm (ViaFabricPlus ekranında bir satır): None = Auto Detect.
+/// Saklanacak çiftler; "Save selected protocol version" kapalıyken sürüm saklanmaz.
+pub fn set_target(v: Option<ServerVersion>) -> Vec<(&'static str, String)> {
+    let index = v.and_then(|v| choices().iter().position(|c| *c == Some(v))).unwrap_or(0);
+    let version = set_choice(index);
+    let mut s = SETTINGS.lock().unwrap();
+    s.auto_detect = v.is_none() || s.auto_detect;
+    let mut out = s.stored();
+    if s.save_selected {
+        out.push((VERSION_KEY, version));
+    }
+    out
+}
+
+fn on_off(b: bool) -> &'static str {
+    if b { "On" } else { "Off" }
+}
+
+/// Options > Mods > Older Servers sayfasının butonları, sırasıyla.
 pub fn settings_labels() -> Vec<String> {
     let s = settings();
     vec![
-        format!("Otomatik algılama: {}", on_off(s.auto_detect)),
-        format!("Buton köşesi: {}", s.button_corner.label()),
-        format!("Butonu gizle: {}", on_off(s.hide_button)),
-        format!("Listede sürüm etiketi: {}", on_off(s.list_tags)),
-        format!("F3 satırı: {}", on_off(s.debug_line)),
-        label(),
+        format!("Multiplayer button: {}", s.mp_button.label()),
+        format!("Add server button: {}", s.add_button.label()),
+        format!("Direct connect button: {}", s.direct_button.label()),
+        format!("Save selected protocol version: {}", on_off(s.save_selected)),
+        format!("Show advertised/server version: {}", on_off(s.show_advertised)),
+        format!("F3 lines: {}", on_off(s.debug_line)),
     ]
 }
 
 /// Ayar sayfasında `i`. butona basıldı: saklanacak anahtar/değer çiftleri.
 pub fn settings_click(i: usize) -> Vec<(&'static str, String)> {
     if i == 5 {
-        return vec![(VERSION_KEY, step(true))];
+        let mut s = SETTINGS.lock().unwrap();
+        s.debug_line = !s.debug_line;
+        return s.stored();
     }
-    let mut s = SETTINGS.lock().unwrap();
-    match i {
-        0 => s.auto_detect = !s.auto_detect,
-        1 => s.button_corner = s.button_corner.next(),
-        2 => s.hide_button = !s.hide_button,
-        3 => s.list_tags = !s.list_tags,
-        4 => s.debug_line = !s.debug_line,
-        _ => return Vec::new(),
-    }
-    s.stored()
+    setting_click(i)
 }
 
-// ---------------------------------------------------------------- buton yerleşimi
+// ---------------------------------------------------------------- favoriler
 
-/// Multiplayer ekranındaki butonun dikdörtgeni, ayarlardaki köşede (ekran `size`).
-pub fn button_at(corner: Corner, size: [f32; 2], text_width: f32) -> [f32; 4] {
-    let w = (text_width + 16.0).max(98.0);
-    let x = match corner {
-        Corner::TopLeft | Corner::BottomLeft => 5.0,
-        Corner::TopRight | Corner::BottomRight => size[0] - w - 5.0,
-    };
-    let y = match corner {
-        Corner::TopLeft | Corner::TopRight => 5.0,
-        Corner::BottomLeft | Corner::BottomRight => size[1] - 25.0,
-    };
-    [x, y, w, 20.0]
+pub const FAVORITES_KEY: &str = "favorites";
+static FAVORITES: Mutex<Vec<String>> = Mutex::new(Vec::new());
+
+pub fn is_favorite(name: &str) -> bool {
+    FAVORITES.lock().unwrap().iter().any(|f| f == name)
 }
 
-/// Multiplayer ekranındaki butonun dikdörtgeni, şu anki ayarlarla.
-pub fn button(size: [f32; 2], text_width: f32) -> [f32; 4] {
-    button_at(settings().button_corner, size, text_width)
-}
-
-/// Edit/Add Server ekranında sürüm butonu: adres kutusunun (y 106, 200 geniş, ortalı)
-/// sağında; sığmazsa solunda; o da olmazsa sağ üstte.
-pub fn edit_button(size: [f32; 2], text_width: f32) -> [f32; 4] {
-    let w = (text_width + 16.0).max(70.0);
-    let field = (size[0] / 2.0).floor() - 100.0;
-    if field + 200.0 + 4.0 + w <= size[0] - 2.0 {
-        [field + 204.0, 106.0, w, 20.0]
-    } else if field - 4.0 - w >= 2.0 {
-        [field - 4.0 - w, 106.0, w, 20.0]
+/// Yıldıza tıklandı: saklanacak liste (satır başına bir ad).
+pub fn toggle_favorite(name: &str) -> String {
+    let mut f = FAVORITES.lock().unwrap();
+    if let Some(i) = f.iter().position(|x| x == name) {
+        f.remove(i);
     } else {
-        [size[0] - w - 5.0, 5.0, w, 20.0]
+        f.push(name.to_owned());
     }
+    f.join("\n")
 }
 
 pub fn inside(rect: [f32; 4], at: [f32; 2]) -> bool {
@@ -454,6 +440,30 @@ pub fn track_world(in_world: bool) {
     }
 }
 
+/// ViaFabricPlus'ın F3 grubu: `[ViaFabricPlus] <sürüm>`, bağlıyken
+/// `P: <adım> C: <istemci protokolü> S: <sunucu protokolü>`.
+pub fn vfp_debug(connected: Option<(ServerVersion, Source)>) -> Vec<String> {
+    let mut lines = vec![format!("\u{a7}f[\u{a7}9ViaFabricPlus\u{a7}f]\u{a7}r {VERSION}")];
+    if let Some((v, _)) = connected {
+        let steps = ServerVersion::ALL.iter().position(|a| *a == v).unwrap_or(0);
+        lines.push(format!(
+            "P: {} C: {} S: {}",
+            2 + steps,
+            ServerVersion::Current.protocol(),
+            v.protocol()
+        ));
+    }
+    lines
+}
+
+/// Bir sunucuya hangi sürümle bağlanılacağı (ping ipucundaki "Target version").
+pub fn target_for(address: &str) -> ServerVersion {
+    match decide(forced(address), choice(), settings().auto_detect) {
+        Decision::Use(v, _) => v,
+        Decision::Detect => detected(pinged(address)),
+    }
+}
+
 /// F3 satırı: `Older Servers: 1.21.11 (774), auto`.
 pub fn debug_line(connected: Option<(ServerVersion, Source)>) -> Option<String> {
     let (v, source) = connected?;
@@ -530,10 +540,12 @@ mod tests {
     fn settings_round_trip_through_their_files() {
         let s = Settings {
             auto_detect: false,
-            button_corner: Corner::BottomRight,
-            hide_button: true,
-            list_tags: false,
             debug_line: false,
+            mp_button: Orientation::LeftBottom,
+            add_button: Orientation::None,
+            direct_button: Orientation::RightBottom,
+            save_selected: false,
+            show_advertised: false,
         };
         let stored: Vec<(String, String)> =
             s.stored().into_iter().map(|(k, v)| (k.to_owned(), v)).collect();
@@ -641,13 +653,13 @@ mod tests {
     }
 
     #[test]
-    fn the_buttons_sit_in_their_corner() {
-        assert_eq!(button_at(Corner::TopLeft, [427.0, 240.0], 50.0), [5.0, 5.0, 98.0, 20.0]);
-        assert_eq!(button_at(Corner::BottomRight, [427.0, 240.0], 50.0), [324.0, 215.0, 98.0, 20.0]);
-        // 427 genişlikte adres kutusu 113..313: buton sağında.
-        assert_eq!(edit_button([427.0, 240.0], 60.0), [317.0, 106.0, 76.0, 20.0]);
-        // 480 genişlikte de sağında; 320'de iki yana da sığmaz: sağ üst.
-        assert_eq!(edit_button([480.0, 240.0], 60.0)[0], 344.0);
-        assert_eq!(edit_button([320.0, 240.0], 60.0), [239.0, 5.0, 76.0, 20.0]);
+    fn favourites_toggle_and_store_one_per_line() {
+        assert!(!is_favorite("1.21.11"));
+        assert_eq!(toggle_favorite("1.21.11"), "1.21.11");
+        assert_eq!(toggle_favorite("26.2"), "1.21.11
+26.2");
+        assert!(is_favorite("26.2"));
+        assert_eq!(toggle_favorite("1.21.11"), "26.2");
+        toggle_favorite("26.2");
     }
 }

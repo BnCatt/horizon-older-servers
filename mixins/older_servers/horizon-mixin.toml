@@ -1,6 +1,6 @@
 [mod]
 id = "older_servers"
-version = "1.1.0"
+version = "2.0.0"
 priority = 100
 
 # Pinned: besides the native hook points it reaches inside Horizon here, all of
@@ -23,21 +23,7 @@ name = "older_servers_mod"
 source = "state.rs"
 visibility = "pub"
 
-# Vanilla buton / liste satırı / kaydırma çubuğu çizimleri.
-[[module]]
-id = "skin"
-file = "crates/horizon-client/src/net.rs"
-name = "older_servers_skin"
-source = "skin.rs"
-visibility = "pub"
 
-# Sürüm seçim panelinin yerleşimi ve olayları.
-[[module]]
-id = "panel"
-file = "crates/horizon-client/src/net.rs"
-name = "older_servers_panel"
-source = "panel.rs"
-visibility = "pub"
 
 # Sunucu satırlarının yeri ve Edit/Add Server'daki adres (iç erişim).
 [[module]]
@@ -46,6 +32,29 @@ file = "crates/horizon-client/src/multiplayer.rs"
 name = "older_servers_rows"
 source = "rows.rs"
 visibility = "pub"
+
+# ViaFabricPlus's release list (names, dates, update names, icons).
+[[module]]
+id = "catalog"
+file = "crates/horizon-client/src/net.rs"
+name = "older_servers_catalog"
+source = "catalog.rs"
+visibility = "pub"
+
+# ViaFabricPlus's screens: state, geometry, events.
+[[module]]
+id = "vfp"
+file = "crates/horizon-client/src/net.rs"
+name = "older_servers_vfp"
+source = "vfp.rs"
+visibility = "pub"
+
+# ViaFabricPlus's screens drawn with the game's widgets (reads Game's gui and title).
+[[module]]
+id = "vfp_draw"
+file = "crates/horizon-client/src/game/native_hooks.rs"
+name = "older_servers_vfp_draw"
+source = "vfp_draw.rs"
 
 # Older servers are on without HORIZON_OLDER_SERVERS.
 [[injection]]
@@ -142,9 +151,41 @@ hook_version = 1
 kind = "HEAD"
 helper = "keys.rs"
 bindings = [
-  { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
   { name = "screen", ty = "&crate::game::native_hooks::NativeScreenView<'_>", value = "screen" },
   { name = "key", ty = "&str", value = "key" },
+  { name = "modifiers", ty = "u32", value = "modifiers" },
+  { name = "canceled", ty = "&mut bool", value = "&mut *canceled" },
+]
+
+[[injection]]
+id = "chars"
+hook = "screen_char_typed_pre"
+hook_version = 1
+kind = "HEAD"
+helper = "chars.rs"
+bindings = [
+  { name = "c", ty = "char", value = "c" },
+  { name = "canceled", ty = "&mut bool", value = "&mut *canceled" },
+]
+
+[[injection]]
+id = "drag"
+hook = "screen_mouse_dragged_pre"
+hook_version = 1
+kind = "HEAD"
+helper = "drag.rs"
+bindings = [
+  { name = "screen", ty = "&crate::game::native_hooks::NativeScreenView<'_>", value = "screen" },
+  { name = "canceled", ty = "&mut bool", value = "&mut *canceled" },
+]
+
+[[injection]]
+id = "released"
+hook = "screen_mouse_button_released_pre"
+hook_version = 1
+kind = "HEAD"
+helper = "released.rs"
+bindings = [
   { name = "canceled", ty = "&mut bool", value = "&mut *canceled" },
 ]
 

@@ -3,7 +3,7 @@
 // durum isteği atılır; listede etiket kapalıysa hiç atılmaz.
 fn older_servers_ping_all(servers: &[ServerEntry]) {
     use crate::net::older_servers_mod as m;
-    if !m::on() || !m::settings().list_tags {
+    if !m::on() || !m::settings().show_advertised {
         return;
     }
     for server in servers {
