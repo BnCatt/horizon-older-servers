@@ -148,6 +148,13 @@ pub fn supported(name: &str) -> Option<ServerVersion> {
         "26.1-26.1.2" => ServerVersion::V26_1,
         "1.21.11" => ServerVersion::V1_21_11,
         "1.21.9-1.21.10" => ServerVersion::V1_21_10,
+        "1.21.7-1.21.8" => ServerVersion::V1_21_8,
+        "1.21.6" => ServerVersion::V1_21_6,
+        "1.21.5" => ServerVersion::V1_21_5,
+        "1.21.4" => ServerVersion::V1_21_4,
+        "1.21.2-1.21.3" => ServerVersion::V1_21_3,
+        "1.21-1.21.1" => ServerVersion::V1_21_1,
+        "1.20.5-1.20.6" => ServerVersion::V1_20_6,
         _ => return None,
     })
 }
@@ -160,6 +167,13 @@ pub fn name_of(v: ServerVersion) -> &'static str {
         ServerVersion::V26_1 => "26.1-26.1.2",
         ServerVersion::V1_21_11 => "1.21.11",
         ServerVersion::V1_21_10 => "1.21.9-1.21.10",
+        ServerVersion::V1_21_8 => "1.21.7-1.21.8",
+        ServerVersion::V1_21_6 => "1.21.6",
+        ServerVersion::V1_21_5 => "1.21.5",
+        ServerVersion::V1_21_4 => "1.21.4",
+        ServerVersion::V1_21_3 => "1.21.2-1.21.3",
+        ServerVersion::V1_21_1 => "1.21-1.21.1",
+        ServerVersion::V1_20_6 => "1.20.5-1.20.6",
     }
 }
 

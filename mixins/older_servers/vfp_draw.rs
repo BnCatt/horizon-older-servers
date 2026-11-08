@@ -221,7 +221,10 @@ fn protocol_slot(
         batch.fill(atlas, cx, cy, cw, ch, rgba(0x58, 0xA6, 0xFF, 0x40));
     }
     let icon_at = [cx + v::SLOT_MARGIN, cy + ((ch - v::ICON) / 2.0).trunc()];
-    if !game.native_item(batch, slot.icon(), icon_at, v::ICON) {
+    // Item models arrive with the world resources, ~1 min after the title
+    // shows; before that `native_item` panics ("world resources joined before
+    // entry"), so the icons simply wait.
+    if game.res.rest.get().is_some() && !game.native_item(batch, slot.icon(), icon_at, v::ICON) {
         game.native_item(batch, "minecraft:barrier", icon_at, v::ICON);
     }
     let name_color = if !joinable { v::GRAY } else if selected { v::ACCENT } else { 0xFFFFFF };

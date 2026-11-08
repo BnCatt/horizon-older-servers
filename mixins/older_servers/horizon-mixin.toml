@@ -1,19 +1,20 @@
 [mod]
 id = "older_servers"
-version = "2.0.1"
+version = "2.1.1"
 priority = 100
 
 # Pinned: besides the native hook points it reaches inside Horizon here, all of
 # which must be re-checked before moving the pin:
 # - net::older_servers_enabled, net::older_server (connection: which version);
-# - item::older_layout (1.21.11's EitherHolder item components);
+# - adapter::translate::serverbound (accept_teleportation + its move, and
+#   sign_update in the pre-26.3 layout, teleport.rs);
 # - multiplayer::ping_all (the list's ping, for the version tags) and the
 #   `older_servers_rows` module in multiplayer.rs (where Screen::draw puts a row,
 #   the Edit screen's address);
 # - game::debug_lines::Game::debug_entry_lines (the F3 line);
 # - Game's private `title` field, read by screen.rs and mouse.rs.
 [compatibility]
-horizon_revision = "66f3981f522b24c250b21523a70080965b940424"
+horizon_revision = "2ebf00a0281c592f79191e76fce0e7d522c6f425"
 
 # Seçim, ayarlar, sunucu başına sürümler; ekran ve bağlantı kodu paylaşır.
 [[module]]
@@ -86,16 +87,19 @@ bindings = [
   { name = "servers", ty = "&[ServerEntry]", value = "servers" },
 ]
 
-# 1.21.11's EitherHolder item components (horizon-rust/horizon#9752).
+# Older servers: accept_teleportation as the id, then a move_player_pos_rot
+# (vanilla's order; Grim drops every move without it and sets the player back).
 [[injection]]
-id = "either"
+id = "teleport"
 kind = "HEAD"
 cancellable = true
-target = "horizon_protocol::item::older_layout"
-helper = "either.rs"
+target = "horizon_protocol::adapter::translate::serverbound"
+helper = "teleport.rs"
 bindings = [
-  { name = "kind", ty = "i32", value = "kind" },
-  { name = "r", ty = "&mut Reader", value = "&mut *r" },
+  { name = "session", ty = "&Session", value = "session" },
+  { name = "state", ty = "State", value = "state" },
+  { name = "id", ty = "i32", value = "id" },
+  { name = "payload", ty = "&[u8]", value = "payload" },
 ]
 
 [[injection]]
