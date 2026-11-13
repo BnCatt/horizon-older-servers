@@ -155,6 +155,8 @@ pub fn supported(name: &str) -> Option<ServerVersion> {
         "1.21.2-1.21.3" => ServerVersion::V1_21_3,
         "1.21-1.21.1" => ServerVersion::V1_21_1,
         "1.20.5-1.20.6" => ServerVersion::V1_20_6,
+        "1.20.3-1.20.4" => ServerVersion::V1_20_3,
+        "1.20.2" => ServerVersion::V1_20_2,
         _ => return None,
     })
 }
@@ -174,6 +176,8 @@ pub fn name_of(v: ServerVersion) -> &'static str {
         ServerVersion::V1_21_3 => "1.21.2-1.21.3",
         ServerVersion::V1_21_1 => "1.21-1.21.1",
         ServerVersion::V1_20_6 => "1.20.5-1.20.6",
+        ServerVersion::V1_20_3 => "1.20.3-1.20.4",
+        ServerVersion::V1_20_2 => "1.20.2",
     }
 }
 

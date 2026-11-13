@@ -15,31 +15,8 @@ fn older_servers_teleport(
     if state != State::Play || session.version == super::ServerVersion::Current {
         return Continue(());
     }
-    // 26.3's sign_update is the position, the four lines, then the side (SignTextSlot:
-    // VarInt 1 front, else back). Every release before it (26.2, 26.1, 1.21.x, 1.20.x)
-    // reads the position, isFrontText, then the lines. Sent as is, the server takes the
-    // first line's length as the side and loses the frame ("Failed to decode
-    // sign_update"); behind PacketEvents (TotemGuard's sign mod check) it reads a
-    // letter of a line as the next packet id ("unknown packet id 101") and drops us.
-    if id == sb::SIGN_UPDATE {
-        let translate = || -> Result<Option<(i32, Vec<u8>)>> {
-            let mut r = Reader::new(payload);
-            let pos = r.bytes(8)?;
-            let lines = [r.string(384)?, r.string(384)?, r.string(384)?, r.string(384)?];
-            let front = r.varint()? == 1;
-            let mut w = Writer::new();
-            w.bytes(pos);
-            w.bool(front);
-            for line in &lines {
-                w.string(line);
-            }
-            Ok(session
-                .version
-                .serverbound_id(state, id)
-                .map(|mapped| (mapped, w.data)))
-        };
-        return Break(translate());
-    }
+    // (sign_update's older layout, which this helper also translated up to 2.1.1, is
+    // Horizon's own since Nightly 2026-11-13.)
     if id != sb::ACCEPT_TELEPORTATION {
         return Continue(());
     }

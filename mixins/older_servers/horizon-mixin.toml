@@ -1,6 +1,6 @@
 [mod]
 id = "older_servers"
-version = "2.1.1"
+version = "2.2.0"
 priority = 100
 
 # Pinned: besides the native hook points it reaches inside Horizon here, all of
@@ -14,7 +14,7 @@ priority = 100
 # - game::debug_lines::Game::debug_entry_lines (the F3 line);
 # - Game's private `title` field, read by screen.rs and mouse.rs.
 [compatibility]
-horizon_revision = "2ebf00a0281c592f79191e76fce0e7d522c6f425"
+horizon_revision = "9f42064c11efe7ef3e5ed2baad7ddc2a3b36eea0"
 
 # Seçim, ayarlar, sunucu başına sürümler; ekran ve bağlantı kodu paylaşır.
 [[module]]
